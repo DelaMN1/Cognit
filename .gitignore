@@ -7,3 +7,23 @@ __pycache__/
 .venv/
 build/
 dist/
+
+# Local test artifacts
+pytest_tmp/
+.tmp-tests/
+.tmp*/
+temp/
+tmp/
+
+# Python cache/test cache
+htmlcov/
+
+# Local environment/secrets
+.env.*
+!.env.example
+
+# Local Cognit runtime files
+.cognit/
+*.db
+*.sqlite
+*.sqlite3
