@@ -323,6 +323,25 @@ Use the full dev install:
 pip install -e ".[dev,ai,gemini,examples]"
 ```
 
+## Local Verification
+
+GitHub Actions is temporarily disabled for the MVP stage. Contributors should run verification locally:
+
+```bash
+pytest
+ruff check .
+python -m cognit.cli --help
+python -m cognit.cli verify-services --help
+python -m cognit.cli run-bot --help
+```
+
+You can also run the real local service checks:
+
+```bash
+cognit verify-services --provider gemini
+cognit test-telegram
+```
+
 Main local commands:
 
 ```bash
