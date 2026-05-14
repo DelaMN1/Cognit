@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cognit"
+version = "0.1.0"
+description = "Structured incident capture for Python logging."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+  { name = "Cognit Contributors" }
+]
+keywords = ["logging", "observability", "exceptions", "incidents"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "ruff>=0.6.0"]
+ai = ["openai>=1.0"]
+gemini = ["google-genai>=1.0.0"]
+examples = ["flask>=3.0", "fastapi>=0.110", "uvicorn>=0.30"]
+
+[project.scripts]
+cognit = "cognit.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--basetemp=pytest_tmp"
+
+[tool.setuptools.packages.find]
+include = ["cognit*"]

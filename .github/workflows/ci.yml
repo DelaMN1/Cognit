@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  core-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,ai,gemini]"
+      - name: Lint
+        run: ruff check .
+      - name: Test core suite
+        run: pytest --ignore=tests/test_examples.py
+      - name: CLI smoke checks
+        run: |
+          python -m cognit.cli --help
+          python -m cognit.cli verify-services --help
+          python -m cognit.cli run-bot --help
+
+  example-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install example dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,ai,gemini,examples]"
+      - name: Test example imports
+        run: pytest tests/test_examples.py
