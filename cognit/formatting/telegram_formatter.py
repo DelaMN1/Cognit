@@ -198,12 +198,12 @@ def _default_follow_up_steps(incident: StoredIncident) -> list[str]:
 
 def _build_confidence(incident: StoredIncident, similar_incidents: list[StoredIncident]) -> str:
     if _looks_like_manual_test(incident):
-        return "high — the incident text itself indicates a manual or intentional test."
+        return "high - the incident text itself indicates a manual or intentional test."
     if incident.exception_message and similar_incidents:
-        return "high — the incident includes an exception message, source location, and similar prior incidents."
+        return "high - the incident includes an exception message, source location, and similar prior incidents."
     if incident.exception_message or incident.traceback:
-        return "medium — the incident includes direct failure evidence, but the root cause is still inferred."
-    return "low — the incident has limited diagnostic detail beyond the log message."
+        return "medium - the incident includes direct failure evidence, but the root cause is still inferred."
+    return "low - the incident has limited diagnostic detail beyond the log message."
 
 
 def _looks_like_manual_test(incident: StoredIncident) -> bool:

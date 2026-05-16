@@ -1,29 +1,31 @@
-.pytest_cache/
-__pycache__/
-*.py[cod]
-*.egg-info/
-.coverage
-.env
-.venv/
-build/
-dist/
-
-# Local test artifacts
+# Local test/temp artifacts
 pytest_tmp/
 .tmp-tests/
 .tmp*/
-temp/
 tmp/
+temp/
 
 # Python cache/test cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
 htmlcov/
 
 # Local environment/secrets
+.env
 .env.*
 !.env.example
+.venv/
 
-# Local Cognit runtime files
+# Cognit runtime/local database files
 .cognit/
 *.db
 *.sqlite
 *.sqlite3
+
+# Build/package outputs
+build/
+dist/
+*.egg-info/

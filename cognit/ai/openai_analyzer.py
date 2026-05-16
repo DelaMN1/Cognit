@@ -26,14 +26,16 @@ class OpenAIAnalyzer(BaseAnalyzer):
     def __init__(
         self,
         *,
+        config: CognitConfig | None = None,
         api_key: str | None = None,
         model: str | None = None,
         timeout: float = 20.0,
         client: Any | None = None,
     ) -> None:
-        config = CognitConfig.from_env()
-        self.api_key = api_key if api_key is not None else config.openai_api_key
-        self.model = model if model is not None else config.openai_model
+        resolved_config = config or CognitConfig.from_env()
+        self.config = resolved_config
+        self.api_key = api_key if api_key is not None else resolved_config.openai_api_key
+        self.model = model if model is not None else resolved_config.openai_model
         self.timeout = timeout
         self.client = client
 
@@ -101,6 +103,10 @@ class OpenAIAnalyzer(BaseAnalyzer):
                         question,
                         similar_incidents=similar_incidents,
                         conversation_history=conversation_history,
+                        max_context_chars=self.config.max_followup_context_chars,
+                        max_history_messages=self.config.max_conversation_history_messages,
+                        max_similar_incidents=self.config.max_similar_incidents_for_followup,
+                        max_similar_incident_chars=self.config.max_similar_incident_chars,
                     ),
                 },
             ],

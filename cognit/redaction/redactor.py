@@ -35,8 +35,8 @@ class Redactor:
 
         redacted = value
         for pattern, placeholder, name in self._rules:
-            if name == "password_field":
-                redacted = pattern.sub(r"\1=[REDACTED_PASSWORD]", redacted)
+            if name in {"password_field", "api_key_field", "token_field"}:
+                redacted = pattern.sub(rf"\1={placeholder}", redacted)
             else:
                 redacted = pattern.sub(placeholder, redacted)
         return redacted

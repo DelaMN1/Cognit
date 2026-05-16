@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import re
 import sqlite3
+from datetime import UTC, datetime, timedelta
 
 from cognit.capture.event import LogEvent
 from cognit.storage.sqlite_store import SQLiteStore
+from cognit.utils.time import parse_utc_timestamp
 
 
 def _event(incident_id: str, fingerprint: str) -> LogEvent:
@@ -57,7 +59,15 @@ def test_database_initialization_and_required_indexes(tmp_path):
         journal_mode = connection.execute("PRAGMA journal_mode;").fetchone()[0]
         busy_timeout = connection.execute("PRAGMA busy_timeout;").fetchone()[0]
 
-    assert {"incidents", "logs", "embeddings", "telegram_messages", "conversations", "alert_events"} <= tables
+    assert {
+        "incidents",
+        "logs",
+        "embeddings",
+        "telegram_messages",
+        "conversations",
+        "alert_events",
+        "chat_contexts",
+    } <= tables
     assert {
         "idx_incidents_fingerprint",
         "idx_alert_events_fingerprint",
@@ -137,6 +147,7 @@ def test_ai_analysis_embedding_conversation_and_alert_persistence(tmp_path):
 
     assert embedding_row == (3, "hash-123")
     assert telegram_row == ("chat-1", "msg-9")
+    assert conversation[0].source == "explicit"
 
 
 def test_recent_lookup_occurrence_and_suppressed_count_updates(tmp_path):
@@ -159,3 +170,44 @@ def test_recent_lookup_occurrence_and_suppressed_count_updates(tmp_path):
     assert updated.occurrence_count == 2
     assert updated.suppressed_count == 1
     assert listed[0].incident_id == "cog_3"
+
+
+def test_chat_context_expiry_is_utc_and_future_with_positive_ttl(tmp_path, monkeypatch):
+    store = SQLiteStore(tmp_path / "cognit.db")
+    now = datetime(2026, 5, 14, 13, 0, 0, tzinfo=UTC)
+    monkeypatch.setattr(store, "_utc_now", lambda: now)
+
+    store.set_active_incident("chat-1", "cog_1", ttl_seconds=90)
+    context = store.get_chat_context("chat-1")
+
+    assert context is not None
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z", context.expires_at)
+    expires_at = parse_utc_timestamp(context.expires_at)
+    assert expires_at.tzinfo == UTC
+    assert expires_at > now
+
+
+def test_get_active_incident_returns_value_when_not_expired(tmp_path, monkeypatch):
+    store = SQLiteStore(tmp_path / "cognit.db")
+    now = datetime(2026, 5, 14, 13, 0, 0, tzinfo=UTC)
+    monkeypatch.setattr(store, "_utc_now", lambda: now)
+
+    store.set_active_incident("chat-1", "cog_1", ttl_seconds=1)
+    assert store.get_active_incident("chat-1") == "cog_1"
+
+
+def test_get_active_incident_returns_none_when_expired_and_deletes_row(tmp_path, monkeypatch):
+    store = SQLiteStore(tmp_path / "cognit.db")
+    base_time = datetime(2026, 5, 14, 13, 0, 0, tzinfo=UTC)
+    monkeypatch.setattr(store, "_utc_now", lambda: base_time)
+    store.set_active_incident("chat-1", "cog_1", ttl_seconds=1)
+
+    monkeypatch.setattr(store, "_utc_now", lambda: base_time + timedelta(seconds=2))
+    assert store.get_active_incident("chat-1") is None
+
+    with sqlite3.connect(tmp_path / "cognit.db") as connection:
+        row = connection.execute(
+            "SELECT chat_id FROM chat_contexts WHERE chat_id = ?",
+            ("chat-1",),
+        ).fetchone()
+    assert row is None

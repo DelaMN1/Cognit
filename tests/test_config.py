@@ -29,6 +29,10 @@ def _clear_cognit_env(monkeypatch) -> None:
         "COGNIT_ENABLE_RATE_LIMITING",
         "COGNIT_TELEGRAM_ALERT_LIMIT",
         "COGNIT_TELEGRAM_ALERT_WINDOW_SECONDS",
+        "COGNIT_MAX_FOLLOWUP_CONTEXT_CHARS",
+        "COGNIT_MAX_CONVERSATION_HISTORY_MESSAGES",
+        "COGNIT_MAX_SIMILAR_INCIDENTS_FOR_FOLLOWUP",
+        "COGNIT_MAX_SIMILAR_INCIDENT_CHARS",
         "COGNIT_REDACTION_PATTERNS",
     ):
         monkeypatch.delenv(key, raising=False)
@@ -50,6 +54,10 @@ def test_config_uses_defaults_when_env_missing(monkeypatch, tmp_path: Path):
     assert config.openai_embedding_model == "text-embedding-3-small"
     assert config.gemini_api_key is None
     assert config.gemini_model == "gemini-2.5-flash"
+    assert config.max_followup_context_chars == 6000
+    assert config.max_conversation_history_messages == 4
+    assert config.max_similar_incidents_for_followup == 2
+    assert config.max_similar_incident_chars == 800
     assert config.enable_telegram_alerts is True
 
 
@@ -73,6 +81,10 @@ def test_config_loads_from_dotenv_path(tmp_path: Path, monkeypatch):
                 "COGNIT_GEMINI_MODEL=gemini-2.5-flash",
                 "COGNIT_ENABLE_TELEGRAM_ALERTS=false",
                 "COGNIT_DEDUPE_WINDOW_SECONDS=120",
+                "COGNIT_MAX_FOLLOWUP_CONTEXT_CHARS=5000",
+                "COGNIT_MAX_CONVERSATION_HISTORY_MESSAGES=3",
+                "COGNIT_MAX_SIMILAR_INCIDENTS_FOR_FOLLOWUP=1",
+                "COGNIT_MAX_SIMILAR_INCIDENT_CHARS=500",
             ]
         ),
         encoding="utf-8",
@@ -93,6 +105,10 @@ def test_config_loads_from_dotenv_path(tmp_path: Path, monkeypatch):
     assert config.gemini_model == "gemini-2.5-flash"
     assert config.enable_telegram_alerts is False
     assert config.dedupe_window_seconds == 120
+    assert config.max_followup_context_chars == 5000
+    assert config.max_conversation_history_messages == 3
+    assert config.max_similar_incidents_for_followup == 1
+    assert config.max_similar_incident_chars == 500
 
 
 def test_dotenv_is_not_loaded_at_import_time(tmp_path: Path):

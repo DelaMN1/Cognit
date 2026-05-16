@@ -25,6 +25,7 @@ Cognit redacts:
 - Put real credentials in `.env`, not in source files.
 - Do not commit `.env`.
 - Expect Telegram, SQLite, and AI providers to receive only redacted content.
+- Expect follow-up questions to be redacted before truncation and before provider prompts are built.
 - Add custom regex patterns through `COGNIT_REDACTION_PATTERNS` when your app uses project-specific secret formats.
 
 ## Limits

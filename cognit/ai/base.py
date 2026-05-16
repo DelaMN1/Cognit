@@ -76,7 +76,7 @@ def answer_follow_up_with_fallback(
     fallback_analyzer = fallback or FallbackAnalyzer()
     redactor = Redactor()
     safe_incident = redactor.redact_stored_incident(incident)
-    safe_question = redactor.redact_text(question) or ""
+    safe_question = question if "[REDACTED_" in question else (redactor.redact_text(question) or "")
     safe_similar_incidents = [
         redactor.redact_stored_incident(item) for item in (similar_incidents or [])
     ]
@@ -86,6 +86,7 @@ def answer_follow_up_with_fallback(
             role=item.role,
             content=redactor.redact_text(item.content) or "",
             created_at=item.created_at,
+            source=item.source,
         )
         for item in (conversation_history or [])
     ]
@@ -126,6 +127,7 @@ def build_analyzer(config: CognitConfig | None = None) -> BaseAnalyzer | None:
         from cognit.ai.openai_analyzer import OpenAIAnalyzer
 
         return OpenAIAnalyzer(
+            config=resolved_config,
             api_key=resolved_config.openai_api_key,
             model=resolved_config.openai_model,
         )
@@ -133,6 +135,7 @@ def build_analyzer(config: CognitConfig | None = None) -> BaseAnalyzer | None:
         from cognit.ai.gemini_analyzer import GeminiAnalyzer
 
         return GeminiAnalyzer(
+            config=resolved_config,
             api_key=resolved_config.gemini_api_key,
             model=resolved_config.gemini_model,
         )

@@ -23,6 +23,8 @@ from cognit.storage.sqlite_store import SQLiteStore
 class CognitHandler(logging.Handler):
     """Capture log records as structured Cognit events."""
 
+    ACTIVE_INCIDENT_TTL_SECONDS = 1800
+
     def __init__(
         self,
         app_name: str | None = None,
@@ -194,11 +196,18 @@ class CognitHandler(logging.Handler):
 
         if self.store is not None:
             try:
+                chat_id = self._get_telegram_chat_id()
                 for message_id in message_ids:
                     self.store.save_telegram_message(
                         incident_id,
-                        self.config.telegram_chat_id or "",
+                        chat_id or "",
                         message_id,
+                    )
+                if chat_id and message_ids:
+                    self.store.set_active_incident(
+                        chat_id,
+                        incident_id,
+                        ttl_seconds=self.ACTIVE_INCIDENT_TTL_SECONDS,
                     )
                 self.store.save_alert_event(
                     event.fingerprint,
@@ -244,3 +253,8 @@ class CognitHandler(logging.Handler):
         if self.store is None:
             return None
         return SimilarIncidentRetriever(self.store)
+
+    def _get_telegram_chat_id(self) -> str | None:
+        if self.config.telegram_chat_id is None:
+            return None
+        return str(self.config.telegram_chat_id)

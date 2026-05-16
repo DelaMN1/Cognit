@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from cognit.capture.event import LogEvent
-from cognit.storage.models import StoredConversationMessage, StoredIncident
+from cognit.storage.models import ChatContext, StoredConversationMessage, StoredIncident
 
 
 class BaseStore(ABC):
@@ -80,9 +80,32 @@ class BaseStore(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def save_conversation_message(self, incident_id: str, role: str, content: str) -> None:
+    def save_conversation_message(
+        self,
+        incident_id: str,
+        role: str,
+        content: str,
+        *,
+        source: str = "explicit",
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
     def get_conversation(self, incident_id: str, limit: int = 20) -> list[StoredConversationMessage]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def set_active_incident(self, chat_id: str, incident_id: str, *, ttl_seconds: int) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_chat_context(self, chat_id: str) -> ChatContext | None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_active_incident(self, chat_id: str) -> str | None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def clear_chat_context(self, chat_id: str) -> None:
         raise NotImplementedError

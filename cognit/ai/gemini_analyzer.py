@@ -27,14 +27,16 @@ class GeminiAnalyzer(BaseAnalyzer):
     def __init__(
         self,
         *,
+        config: CognitConfig | None = None,
         api_key: str | None = None,
         model: str | None = None,
         timeout: float = 20.0,
         client: Any | None = None,
     ) -> None:
-        config = CognitConfig.from_env()
-        self.api_key = api_key if api_key is not None else config.gemini_api_key
-        self.model = model if model is not None else config.gemini_model
+        resolved_config = config or CognitConfig.from_env()
+        self.config = resolved_config
+        self.api_key = api_key if api_key is not None else resolved_config.gemini_api_key
+        self.model = model if model is not None else resolved_config.gemini_model
         self.timeout = timeout
         self.client = client
 
@@ -82,10 +84,17 @@ class GeminiAnalyzer(BaseAnalyzer):
             raise CognitAIError("Gemini API key is missing.")
 
         client = self.client or self._build_client()
-        prompt = (
-            f"{build_follow_up_system_prompt()}\n\n"
-            f"{build_follow_up_user_prompt(incident, question, similar_incidents=similar_incidents, conversation_history=conversation_history)}"
+        prompt_body = build_follow_up_user_prompt(
+            incident,
+            question,
+            similar_incidents=similar_incidents,
+            conversation_history=conversation_history,
+            max_context_chars=self.config.max_followup_context_chars,
+            max_history_messages=self.config.max_conversation_history_messages,
+            max_similar_incidents=self.config.max_similar_incidents_for_followup,
+            max_similar_incident_chars=self.config.max_similar_incident_chars,
         )
+        prompt = f"{build_follow_up_system_prompt()}\n\n{prompt_body}"
         try:
             response = client.models.generate_content(
                 model=self.model,

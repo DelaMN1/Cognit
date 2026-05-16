@@ -55,15 +55,45 @@ class FallbackAnalyzer:
         conversation_history: Sequence[StoredConversationMessage] | None = None,
     ) -> str:
         likely_cause = None
+        suggested_steps: list[str] = []
         if isinstance(incident.ai_analysis, dict):
             likely_cause = incident.ai_analysis.get("likely_cause")
+            raw_steps = incident.ai_analysis.get("suggested_steps")
+            if isinstance(raw_steps, list):
+                suggested_steps = [item for item in raw_steps if isinstance(item, str)]
 
-        del question, conversation_history
+        normalized_question = question.strip().lower()
+        if _is_sensitive_data_question(normalized_question):
+            if _contains_redaction_markers(incident, similar_incidents, conversation_history):
+                return (
+                    "The incident context used for this reply is redacted. I can see placeholder values such as "
+                    "[REDACTED_EMAIL], [REDACTED_API_KEY], [REDACTED_PASSWORD], or [REDACTED_DATABASE_URL], which "
+                    "shows the bot output is redacted. That confirms redaction in this follow-up path, not "
+                    "necessarily every external sink unless those paths are verified separately."
+                )
+            return (
+                "I do not see raw secrets in the redacted incident context used for this reply. That confirms this "
+                "follow-up answer used redacted data, not that every external sink has been verified."
+            )
+        if _is_traceback_question(normalized_question):
+            traceback_tail = _build_traceback_tail(incident.traceback)
+            if traceback_tail:
+                return f"Here is the most relevant traceback tail:\n{traceback_tail}"
+            return "The incident does not include a traceback tail in the stored context."
+        if _is_inspection_question(normalized_question):
+            return _build_inspection_answer(incident, suggested_steps)
         if _looks_like_manual_test(incident):
             return (
                 "This incident appears to be a manual test because the incident text explicitly says it was triggered "
-                "for testing rather than describing an unexpected production failure."
+                "for testing rather than describing an unexpected production failure. The immediate cause is the "
+                "intentional sample exception raised by that test path."
             )
+        if _is_cause_question(normalized_question):
+            if likely_cause:
+                return f"The most likely cause is: {likely_cause}"
+            if incident.exception_message:
+                return f"The most likely cause is the exception message: {incident.exception_message}"
+            return f"The most likely cause is the logged error message: {incident.message}"
         if likely_cause:
             return f"The stored analysis points to this likely cause: {likely_cause}"
         if incident.exception_message:
@@ -98,3 +128,60 @@ def _looks_like_manual_test(incident: StoredIncident) -> bool:
         )
     ).lower()
     return "manual test" in haystack or "manual follow-up test" in haystack or "manual alert test" in haystack
+
+
+def _is_cause_question(question: str) -> bool:
+    return "cause" in question or "why" in question or "root cause" in question
+
+
+def _is_inspection_question(question: str) -> bool:
+    return any(term in question for term in ("inspect", "check", "next", "first", "look at"))
+
+
+def _is_sensitive_data_question(question: str) -> bool:
+    return any(
+        term in question
+        for term in ("sensitive", "secret", "exposed", "password", "api key", "token")
+    )
+
+
+def _is_traceback_question(question: str) -> bool:
+    return "traceback" in question or "stack trace" in question
+
+
+def _build_inspection_answer(incident: StoredIncident, suggested_steps: Sequence[str]) -> str:
+    steps = [step.strip() for step in suggested_steps if step.strip()]
+    if steps:
+        first_step = steps[0]
+        if len(steps) > 1:
+            return f"Inspect this first: {first_step} Then check: {steps[1]}"
+        return f"Inspect this first: {first_step}"
+    return (
+        f"Inspect the failing location at {incident.pathname}:{incident.line_number} in {incident.function}() first, "
+        "then review the inputs and recent changes around that code path."
+    )
+
+
+def _contains_redaction_markers(
+    incident: StoredIncident,
+    similar_incidents: Sequence[StoredIncident] | None,
+    conversation_history: Sequence[StoredConversationMessage] | None,
+) -> bool:
+    chunks = [incident.message or "", incident.exception_message or "", incident.traceback or ""]
+    if isinstance(incident.ai_analysis, dict):
+        chunks.append(str(incident.ai_analysis))
+    for item in similar_incidents or []:
+        chunks.extend([item.message or "", item.exception_message or "", item.traceback or ""])
+    for item in conversation_history or []:
+        chunks.append(item.content or "")
+    return "[REDACTED_" in " ".join(chunks)
+
+
+def _build_traceback_tail(traceback: str | None, *, max_lines: int = 6, max_chars: int = 500) -> str:
+    if not traceback:
+        return ""
+    tail_lines = [line.rstrip() for line in traceback.splitlines() if line.strip()][-max_lines:]
+    tail = "\n".join(tail_lines)
+    if len(tail) <= max_chars:
+        return tail
+    return tail[-max_chars:].lstrip()

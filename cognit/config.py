@@ -104,6 +104,10 @@ class CognitConfig:
     enable_rate_limiting: bool = True
     telegram_alert_limit: int = 10
     telegram_alert_window_seconds: int = 60
+    max_followup_context_chars: int = 6000
+    max_conversation_history_messages: int = 4
+    max_similar_incidents_for_followup: int = 2
+    max_similar_incident_chars: int = 800
     custom_redaction_patterns: list[str] = field(default_factory=list)
 
     @classmethod
@@ -153,6 +157,22 @@ class CognitConfig:
             telegram_alert_window_seconds=_to_int(
                 os.getenv("COGNIT_TELEGRAM_ALERT_WINDOW_SECONDS"),
                 default=60,
+            ),
+            max_followup_context_chars=_to_int(
+                os.getenv("COGNIT_MAX_FOLLOWUP_CONTEXT_CHARS"),
+                default=6000,
+            ),
+            max_conversation_history_messages=_to_int(
+                os.getenv("COGNIT_MAX_CONVERSATION_HISTORY_MESSAGES"),
+                default=4,
+            ),
+            max_similar_incidents_for_followup=_to_int(
+                os.getenv("COGNIT_MAX_SIMILAR_INCIDENTS_FOR_FOLLOWUP"),
+                default=2,
+            ),
+            max_similar_incident_chars=_to_int(
+                os.getenv("COGNIT_MAX_SIMILAR_INCIDENT_CHARS"),
+                default=800,
             ),
             custom_redaction_patterns=_parse_list(os.getenv("COGNIT_REDACTION_PATTERNS")),
         )

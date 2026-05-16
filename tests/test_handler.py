@@ -61,7 +61,7 @@ def test_logger_exception_runs_full_pipeline(tmp_path):
     handler = CognitHandler(
         app_name="demo",
         environment="test",
-        config=CognitConfig(enable_capture=True),
+        config=CognitConfig(enable_capture=True, telegram_chat_id="12345"),
         store=store,
         deduplicator=Deduplicator(store, dedupe_window_seconds=60),
         rate_limiter=RateLimiter(store, telegram_alert_limit=5, telegram_alert_window_seconds=60),
@@ -89,6 +89,7 @@ def test_logger_exception_runs_full_pipeline(tmp_path):
     assert "redis://:secret@localhost:6379/0" not in telegram.messages[0]
     assert analyzer.last_similar_ids == ["cog_prior"]
     assert incident.ai_analysis is not None
+    assert store.get_active_incident("12345") == incident.incident_id
 
     with sqlite3.connect(tmp_path / "cognit.db") as connection:
         telegram_rows = connection.execute(
@@ -104,7 +105,7 @@ def test_logger_exception_runs_full_pipeline(tmp_path):
             (incident.incident_id,),
         ).fetchall()
 
-    assert telegram_rows == [("", "msg-1")]
+    assert telegram_rows == [("12345", "msg-1")]
     assert alert_rows == [(1, None)]
     assert embedding_rows
 

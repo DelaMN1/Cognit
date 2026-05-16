@@ -50,6 +50,8 @@ cognit run-bot
 /cognit <incident_id> What caused this?
 ```
 
+After the alert arrives, you can also reply with plain text such as `What caused this?`. Use `/current` to check the active incident and `/clear` to reset it.
+
 6. Run tests:
 
 ```bash

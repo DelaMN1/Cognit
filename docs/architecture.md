@@ -21,15 +21,17 @@ Cognit uses a small local architecture:
 5. Cognit loads similar incidents and generates analysis.
 6. Cognit stores analysis and embeddings.
 7. Cognit sends a Telegram alert if suppression does not apply.
+8. If Telegram sends at least one alert message successfully, Cognit stores active chat context for follow-up routing.
 
 ### Follow-Up Path
 
 1. `cognit run-bot` starts Telegram polling.
-2. The bot reads `/cognit <incident_id> <question>`.
-3. The bot loads the incident, recent conversation, and similar incidents.
-4. The bot redacts the question and all loaded context.
-5. The selected provider or fallback path generates a plain-text answer.
-6. Cognit stores the user question and the bot reply in SQLite.
+2. The bot accepts `/cognit <incident_id> <question>` or plain-text replies when active chat context exists.
+3. `/current` shows the active incident for the chat and `/clear` removes it.
+4. The bot loads compact incident context, recent conversation, and limited similar incidents.
+5. The bot redacts the question and all loaded context before provider calls.
+6. The selected provider or fallback path generates a plain-text answer.
+7. Cognit stores the user question and the bot reply in SQLite.
 
 ## Storage
 

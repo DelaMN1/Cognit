@@ -7,6 +7,14 @@ from typing import Any
 
 
 @dataclass(slots=True)
+class ChatContext:
+    chat_id: str
+    active_incident_id: str
+    updated_at: str
+    expires_at: str
+
+
+@dataclass(slots=True)
 class StoredIncident:
     incident_id: str
     app_name: str
@@ -73,3 +81,4 @@ class StoredConversationMessage:
     role: str
     content: str
     created_at: str
+    source: str = "explicit"

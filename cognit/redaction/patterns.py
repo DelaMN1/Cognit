@@ -58,6 +58,16 @@ DEFAULT_REDACTION_RULES: tuple[RedactionRule, ...] = (
         pattern=r"(?i)\b(password|passwd|pwd)\b\s*[:=]\s*([\"']?)([^,\s\"'}\]]+)\2",
     ),
     RedactionRule(
+        name="api_key_field",
+        placeholder="[REDACTED_API_KEY]",
+        pattern=r"(?i)\b(api[_-]?key|openai[_-]?api[_-]?key|gemini[_-]?api[_-]?key)\b\s*[:=]\s*([\"']?)([^,\s\"'}\]]+)\2",
+    ),
+    RedactionRule(
+        name="token_field",
+        placeholder="[REDACTED_TOKEN]",
+        pattern=r"(?i)\b(token|access[_-]?token|refresh[_-]?token|bot[_-]?token|telegram[_-]?bot[_-]?token|secret)\b\s*[:=]\s*([\"']?)([^,\s\"'}\]]+)\2",
+    ),
+    RedactionRule(
         name="email",
         placeholder="[REDACTED_EMAIL]",
         pattern=r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b",

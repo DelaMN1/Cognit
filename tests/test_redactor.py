@@ -45,7 +45,9 @@ def test_redactor_redacts_default_secret_types():
             "key sk-proj-abcdefghijklmnopqrstuvwxyz "
             "gho_abcdefghijklmnopqrstuvwxyz123456 "
             "jwt eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abc.def "
-            "password=hunter2"
+            "password=hunter2 "
+            "token=abc123 "
+            "api_key=xyz789"
         ),
         exception_message="Connect redis://:secret@localhost:6379/0",
         traceback=(
@@ -63,6 +65,8 @@ def test_redactor_redacts_default_secret_types():
     assert "[REDACTED_TOKEN]" in redacted.message
     assert "[REDACTED_JWT]" in redacted.message
     assert "[REDACTED_PASSWORD]" in redacted.message
+    assert "token=[REDACTED_TOKEN]" in redacted.message
+    assert "api_key=[REDACTED_API_KEY]" in redacted.message
     assert redacted.exception_message == "Connect [REDACTED_DATABASE_URL]"
     assert "[REDACTED_PRIVATE_KEY]" in redacted.traceback
     assert redacted.tags["owner"] == "[REDACTED_EMAIL]"

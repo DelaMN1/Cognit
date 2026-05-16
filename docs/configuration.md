@@ -41,6 +41,15 @@ Cognit reads configuration from environment variables when `CognitConfig.from_en
 | `COGNIT_TELEGRAM_ALERT_LIMIT` | Max sent alerts inside the rate window | `10` |
 | `COGNIT_TELEGRAM_ALERT_WINDOW_SECONDS` | Rate limit window | `60` |
 
+## Follow-Up Context Limits
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `COGNIT_MAX_FOLLOWUP_CONTEXT_CHARS` | Max compact provider prompt size for follow-up questions | `6000` |
+| `COGNIT_MAX_CONVERSATION_HISTORY_MESSAGES` | Max recent conversation messages included in follow-up context | `4` |
+| `COGNIT_MAX_SIMILAR_INCIDENTS_FOR_FOLLOWUP` | Max similar incidents included in follow-up context | `2` |
+| `COGNIT_MAX_SIMILAR_INCIDENT_CHARS` | Max characters per similar-incident summary | `800` |
+
 ## Redaction
 
 | Variable | Purpose | Default |
@@ -57,4 +66,8 @@ COGNIT_GEMINI_API_KEY=your_gemini_api_key_here
 COGNIT_GEMINI_MODEL=gemini-2.5-flash
 COGNIT_TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 COGNIT_TELEGRAM_CHAT_ID=your_chat_id_here
+COGNIT_MAX_FOLLOWUP_CONTEXT_CHARS=6000
+COGNIT_MAX_CONVERSATION_HISTORY_MESSAGES=4
+COGNIT_MAX_SIMILAR_INCIDENTS_FOR_FOLLOWUP=2
+COGNIT_MAX_SIMILAR_INCIDENT_CHARS=800
 ```

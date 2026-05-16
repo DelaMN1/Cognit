@@ -15,5 +15,9 @@ def format_utc_timestamp(value: datetime) -> str:
     return value.astimezone(UTC).strftime(TIMESTAMP_FORMAT)
 
 
+def parse_utc_timestamp(value: str) -> datetime:
+    return datetime.strptime(value, TIMESTAMP_FORMAT).replace(tzinfo=UTC)
+
+
 def format_log_record_timestamp(created_at: float) -> str:
     return format_utc_timestamp(datetime.fromtimestamp(created_at, tz=UTC))

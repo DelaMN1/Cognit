@@ -16,11 +16,12 @@ from cognit.capture.event import LogEvent
 from cognit.exceptions import CognitStorageError
 from cognit.storage.base import BaseStore
 from cognit.storage.models import (
+    ChatContext,
     StoredConversationMessage,
     StoredIncident,
 )
 from cognit.utils.json import make_json_safe
-from cognit.utils.time import format_utc_timestamp, utc_now
+from cognit.utils.time import format_utc_timestamp, parse_utc_timestamp, utc_now
 
 
 DEFAULT_DB_PATH = Path(".cognit") / "cognit.db"
@@ -56,6 +57,7 @@ class SQLiteStore(BaseStore):
                 try:
                     with connection:
                         connection.executescript(_SCHEMA_SQL)
+                        self._migrate_schema(connection)
                         connection.executescript(_INDEX_SQL)
                 except sqlite3.Error as exc:
                     raise CognitStorageError("Failed to initialize SQLite storage.") from exc
@@ -379,17 +381,25 @@ class SQLiteStore(BaseStore):
             "Failed to save alert event.",
         )
 
-    def save_conversation_message(self, incident_id: str, role: str, content: str) -> None:
+    def save_conversation_message(
+        self,
+        incident_id: str,
+        role: str,
+        content: str,
+        *,
+        source: str = "explicit",
+    ) -> None:
         self._write(
             """
             INSERT INTO conversations (
                 incident_id,
                 role,
                 content,
-                created_at
-            ) VALUES (?, ?, ?, ?)
+                created_at,
+                source
+            ) VALUES (?, ?, ?, ?, ?)
             """,
-            (incident_id, role, content, self._now()),
+            (incident_id, role, content, self._now(), source),
             "Failed to save conversation message.",
         )
 
@@ -398,7 +408,7 @@ class SQLiteStore(BaseStore):
             try:
                 rows = connection.execute(
                     """
-                    SELECT incident_id, role, content, created_at
+                    SELECT incident_id, role, content, created_at, source
                     FROM conversations
                     WHERE incident_id = ?
                     ORDER BY created_at DESC
@@ -414,10 +424,68 @@ class SQLiteStore(BaseStore):
                 role=row["role"],
                 content=row["content"],
                 created_at=row["created_at"],
+                source=row["source"] if "source" in row.keys() else "explicit",
             )
             for row in rows
         ]
         return list(reversed(messages))
+
+    def set_active_incident(self, chat_id: str, incident_id: str, *, ttl_seconds: int) -> None:
+        now = self._utc_now()
+        updated_at = format_utc_timestamp(now)
+        expires_at = format_utc_timestamp(now + timedelta(seconds=ttl_seconds))
+        self._write(
+            """
+            INSERT INTO chat_contexts (chat_id, active_incident_id, updated_at, expires_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(chat_id) DO UPDATE SET
+                active_incident_id = excluded.active_incident_id,
+                updated_at = excluded.updated_at,
+                expires_at = excluded.expires_at
+            """,
+            (chat_id, incident_id, updated_at, expires_at),
+            "Failed to save chat context.",
+        )
+
+    def get_chat_context(self, chat_id: str) -> ChatContext | None:
+        with self._connect() as connection:
+            try:
+                row = connection.execute(
+                    """
+                    SELECT chat_id, active_incident_id, updated_at, expires_at
+                    FROM chat_contexts
+                    WHERE chat_id = ?
+                    """,
+                    (chat_id,),
+                ).fetchone()
+            except sqlite3.Error as exc:
+                raise CognitStorageError("Failed to load chat context.") from exc
+        if row is None:
+            return None
+
+        context = ChatContext(
+            chat_id=row["chat_id"],
+            active_incident_id=row["active_incident_id"],
+            updated_at=row["updated_at"],
+            expires_at=row["expires_at"],
+        )
+        if self._is_chat_context_expired(context):
+            self.clear_chat_context(chat_id)
+            return None
+        return context
+
+    def get_active_incident(self, chat_id: str) -> str | None:
+        context = self.get_chat_context(chat_id)
+        if context is None:
+            return None
+        return context.active_incident_id
+
+    def clear_chat_context(self, chat_id: str) -> None:
+        self._write(
+            "DELETE FROM chat_contexts WHERE chat_id = ?",
+            (chat_id,),
+            "Failed to clear chat context.",
+        )
 
     def _write(self, sql: str, params: tuple[Any, ...], error_message: str) -> None:
         with self._write_lock:
@@ -427,6 +495,18 @@ class SQLiteStore(BaseStore):
                         connection.execute(sql, params)
                 except sqlite3.Error as exc:
                     raise CognitStorageError(error_message) from exc
+
+    def _migrate_schema(self, connection: sqlite3.Connection) -> None:
+        conversation_columns = {
+            row["name"] for row in connection.execute("PRAGMA table_info(conversations)").fetchall()
+        }
+        if "source" not in conversation_columns:
+            connection.execute(
+                "ALTER TABLE conversations ADD COLUMN source TEXT NOT NULL DEFAULT 'explicit'"
+            )
+
+    def _is_chat_context_expired(self, context: ChatContext) -> bool:
+        return parse_utc_timestamp(context.expires_at) <= self._utc_now()
 
     def _row_to_incident(self, row: sqlite3.Row) -> StoredIncident:
         analysis = None
@@ -541,10 +621,13 @@ class SQLiteStore(BaseStore):
         return vector
 
     def _now(self) -> str:
-        return format_utc_timestamp(utc_now())
+        return format_utc_timestamp(self._utc_now())
 
     def _now_minus_seconds(self, seconds: int) -> str:
-        return format_utc_timestamp(utc_now() - timedelta(seconds=seconds))
+        return format_utc_timestamp(self._utc_now() - timedelta(seconds=seconds))
+
+    def _utc_now(self):
+        return utc_now()
 
 
 _SCHEMA_SQL = """
@@ -619,7 +702,15 @@ CREATE TABLE IF NOT EXISTS conversations (
     incident_id TEXT NOT NULL,
     role TEXT NOT NULL,
     content TEXT NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'explicit'
+);
+
+CREATE TABLE IF NOT EXISTS chat_contexts (
+    chat_id TEXT PRIMARY KEY,
+    active_incident_id TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS alert_events (

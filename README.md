@@ -103,6 +103,10 @@ COGNIT_DEDUPE_WINDOW_SECONDS=300
 COGNIT_ENABLE_RATE_LIMITING=true
 COGNIT_TELEGRAM_ALERT_LIMIT=10
 COGNIT_TELEGRAM_ALERT_WINDOW_SECONDS=60
+COGNIT_MAX_FOLLOWUP_CONTEXT_CHARS=6000
+COGNIT_MAX_CONVERSATION_HISTORY_MESSAGES=4
+COGNIT_MAX_SIMILAR_INCIDENTS_FOR_FOLLOWUP=2
+COGNIT_MAX_SIMILAR_INCIDENT_CHARS=800
 ```
 
 See [docs/configuration.md](/C:/Users/NANA/DESKTOP/Cognit/docs/configuration.md:1) for the full variable list.
@@ -262,7 +266,9 @@ Then ask:
 /cognit <incident_id> What caused this?
 ```
 
-The bot loads the incident, recent follow-up history, and similar incidents, redacts the context, asks the selected provider, saves the question and answer, and replies in Telegram.
+After Cognit sends an alert, you can also reply with plain text such as `What caused this?` and the bot will use the active incident for that chat. Use `/current` to see the active incident and `/clear` to reset it.
+
+The bot loads compact incident context, recent follow-up history, and a limited similar-incident summary, redacts the context, asks the selected provider, saves the question and answer, and replies in Telegram.
 
 ## Redaction and Security
 
@@ -340,16 +346,6 @@ You can also run the real local service checks:
 ```bash
 cognit verify-services --provider gemini
 cognit test-telegram
-```
-
-Main local commands:
-
-```bash
-pytest
-ruff check .
-python -m cognit.cli --help
-python -m cognit.cli verify-services --help
-python -m cognit.cli run-bot --help
 ```
 
 See [docs/local_development.md](/C:/Users/NANA/DESKTOP/Cognit/docs/local_development.md:1) for the complete workflow and manual verification checklist.

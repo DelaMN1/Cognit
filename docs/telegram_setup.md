@@ -45,4 +45,9 @@ Run:
 cognit run-bot
 ```
 
-Use `/cognit <incident_id> <question>` after Cognit sends a real alert.
+After Cognit sends a real alert, you can:
+
+- use `/cognit <incident_id> <question>`
+- reply with plain text like `What caused this?`
+- use `/current` to inspect the active incident for the chat
+- use `/clear` to reset the active incident
